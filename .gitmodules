@@ -1,21 +1,9 @@
 [submodule "lib/r0-base/LABjs"]
 	path = lib/r0-base/LABjs
 	url = git://github.com/getify/LABjs.git
-[submodule "lib/r1-core/backbone"]
-	path = lib/r1-core/backbone
-	url = git://github.com/documentcloud/backbone.git
-[submodule "lib/r1-core/JSON-js"]
-	path = lib/r1-core/JSON-js
-	url = git://github.com/douglascrockford/JSON-js.git
-[submodule "lib/r1-core/underscore"]
-	path = lib/r1-core/underscore
-	url = git://github.com/documentcloud/underscore.git
 [submodule "lib/test/qunit"]
 	path = lib/test/qunit
 	url = git://github.com/jquery/qunit.git
 [submodule "lib/build/closure-compiler"]
 	path = lib/build/closure-compiler
-	url = git://github.com/cappuccino/commonjs-closure-compiler.git
-[submodule "lib/r1-core/jquery-ui"]
-	path = lib/r1-core/jquery-ui
-	url = git://github.com/jquery/jquery-ui.git
+	url = git://github.com/documentcloud/closure-compiler.git
