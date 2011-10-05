@@ -24,8 +24,8 @@ Everything you need is on github, in this repo and others using submodules.
 
 1. Check out the repo
 
-        git init
-        git clone <address of this repo>
+        git clone git://github.com/lightenna/discojs.git
+        cd discojs
 
 2. Then check out the submodules
 
