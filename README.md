@@ -17,6 +17,30 @@ Getting started
 Code samples that illustrate some basic uses of the API can be found in the `test/[feature]/samples` directories.
 
 
+Build instructions
+------------------
+
+Everything you need is on github, in this repo and others using submodules.
+
+1. Check out the repo
+
+        git init
+        git clone <address of this repo>
+
+2. Then check out the submodules
+
+        git submodule init
+        git submodule update
+
+3a. Run the build and minify script
+
+        ./build/scripts/build-concat-min.bat
+
+3b. Or run the build command manually
+
+        ant -f ../build.xml concat min > ../intermediates/output.txt 2>&1
+
+
 Documentation
 -------------
 
