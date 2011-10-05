@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>DiSCO Test Suite</title>
+	<link rel="stylesheet" href="../../lib/test/qunit/qunit/qunit.css" type="text/css" media="screen">
+	<script type="text/javascript" src="../../lib/test/qunit/qunit/qunit.js"></script>
+	<script type="text/javascript" src="DiscoLoader.test.js"></script>
+	<script type="text/javascript" src="DiscoLoaderEmbed.test.js"></script>
+</head>
+<body>
+	<h1 id="qunit-header">DiSCO Test Suite</h1>
+	<h2 id="qunit-banner"></h2>
+	<div id="qunit-testrunner-toolbar"></div>
+	<h2 id="qunit-userAgent"></h2>
+	<ol id="qunit-tests"></ol>
+	<div id="qunit-fixture">test markup</div>
+
+	<!-- standard disco embed -->
+	<script type="text/javascript">
+    var D15C0_m = D15C0_m || {};
+	D15C0_m.q = D15C0_m.q || [];
+	D15C0_m.q.push(['_settings',{
+		'api' : '0.11',
+		'debug' : true
+	}]);
+	</script>
+	<script type="text/javascript" src="../../dist/loader/disco-loader.min.js"></script>
+</body>
+</html>

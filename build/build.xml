@@ -1,0 +1,146 @@
+<?xml version="1.0"?>
+<!-- Build file for use with ant -->
+<project name="disco" default="" basedir="../">
+  <description>
+	simple concatentate and minimise build file for discojs
+  </description>
+
+  <!-- setup package names -->
+  <property name="r0" value="r0-base" />
+  <property name="r1" value="r1-core" />
+  <property name="min.lab.name" value="LABjs/LAB.min.js" />
+  <property name="src.lab.name" value="LABjs/LAB.src.js" />
+
+  <!-- setup directory aliae -->
+  <property name="build.dir" value="build" />
+  <property name="jslint.build.dir" value="${build.dir}/jslint" />
+  <property name="cc.build.dir" value="${build.dir}/closure-compiler" />
+  <property name="tmp.dir" value="build/intermediates" />
+  <property name="src.dir" value="src" />
+  <property name="externs.src.dir" value="${src.dir}/externs" />
+  <property name="loader.src.dir" value="${src.dir}/loader" />
+  <property name="r0.src.dir" value="${src.dir}/${r0}" />
+  <property name="r1.src.dir" value="${src.dir}/${r1}" />
+  <property name="lib.dir" value="lib" />
+  <property name="r0.lib.dir" value="${lib.dir}/${r0}" />
+  <property name="r1.lib.dir" value="${lib.dir}/${r1}" />
+  <property name="root.dist.dir" value="." />
+  <property name="dist.dir" value="dist" />
+  <property name="loader.dist.dir" value="${dist.dir}/loader" />
+  <property name="r0.dist.dir" value="${dist.dir}/${r0}" />
+  <property name="r1.dist.dir" value="${dist.dir}/${r1}" />
+
+  <!-- clear out target directories -->
+  <delete>
+    <fileset dir="${tmp.dir}" includes="*.js"/>
+    <fileset dir="${tmp.dir}" includes="output-r*.txt"/>
+  <!--
+    <fileset dir="${dist.dir}" includes="*.js"/>
+    <fileset dir="${loader.dist.dir}" includes="*.js"/>
+    <fileset dir="${r0.dist.dir}" includes="*.js"/>
+    <fileset dir="${r1.dist.dir}" includes="*.js"/>
+   -->
+  </delete>
+
+  <!-- setup ant closure compiler task -->
+  <taskdef name="jscomp" classname="com.google.javascript.jscomp.ant.CompileTask"
+    classpath="${cc.build.dir}/compiler.jar"/>
+
+  <target name="concat">
+    <!-- concat loader + r0 components to be minified later -->
+    <concat destfile="${tmp.dir}/disco.pre-min.js" force="no">
+      <fileset dir="${loader.src.dir}" includes="*.js*"/>
+      <fileset dir="${r0.src.dir}" includes="*.js*"/>
+    </concat>
+    <!-- add un-minified LAB to produce un-min disco -->
+    <concat destfile="${r0.dist.dir}/disco.js" force="no">
+      <fileset dir="${r0.lib.dir}" includes="${src.lab.name}"/>
+      <fileset dir="${tmp.dir}" includes="disco.pre-min.js"/>
+    </concat>
+    <!-- concat un-min LAB with loader (not r0) to produce disco-loader -->
+    <concat destfile="${loader.dist.dir}/disco-loader.js" force="no">
+      <fileset dir="${r0.lib.dir}" includes="${src.lab.name}"/>
+      <fileset dir="${loader.src.dir}" includes="*.js*"/>
+    </concat>
+    <!-- package up r1 components to discoball -->
+    <concat destfile="${r1.dist.dir}/discoball.js" force="no">
+      <fileset dir="${r1.src.dir}" includes="*.js*"/>
+    </concat>
+    <!-- copy un-min r0 to root -->
+    <copy todir="${root.dist.dir}">
+      <fileset dir="${r0.dist.dir}" includes="*.js*"/>
+    </copy>
+  </target>
+
+  <target name="lint">
+    <!-- execute JSlint in Java using Rhino -->
+    <exec executable="java" output="${tmp.dir}/output-${r1}-jslint.txt">
+      <arg value="-jar"/>
+      <arg value="${jslint.dir}/js.jar"/>
+      <arg value="${jslint.dir}/jslint.js"/>
+      <arg value="${r1.src.dir}/*.js"/>
+    </exec>
+  </target>
+
+  <target name="min">
+    <!-- compile un-min r0 with externs --> 
+    <jscomp compilationLevel="advanced" debug="false" output="${tmp.dir}/disco.pre-lib.js">
+      <externs dir="${externs.src.dir}">
+        <file name="${r0}.js" />
+      </externs>
+      <externs dir="${r0.lib.dir}">
+        <file name="${min.lab.name}" />
+      </externs>
+      <externs dir="${r1.lib.dir}">
+        <file name="jquery/jquery.min.js" />
+      </externs>
+      <sources dir="${tmp.dir}">
+        <file name="disco.pre-min.js" />
+      </sources>
+    </jscomp>
+    <!-- concat min r0 + min lab = disco.min.js -->
+    <concat destfile="${r0.dist.dir}/disco.min.js" force="no">
+      <fileset dir="${r0.lib.dir}" includes="${min.lab.name}"/>
+      <fileset dir="${tmp.dir}" includes="disco.pre-lib.js"/>
+    </concat>
+    <!-- compile un-min loader with externs --> 
+    <jscomp compilationLevel="advanced" debug="false" output="${tmp.dir}/disco.loader-only.min.js">
+      <externs dir="${externs.src.dir}">
+        <file name="${r0}.js" />
+      </externs>
+      <externs dir="${r0.lib.dir}">
+        <file name="${min.lab.name}" />
+      </externs>
+      <sources dir="${loader.src.dir}">
+        <file name="DiscoLoader.js" />
+      </sources>
+    </jscomp>
+    <!-- concat min loader + min lab = disco-loader.min.js -->
+    <concat destfile="${loader.dist.dir}/disco-loader.min.js" force="no">
+      <fileset dir="${r0.lib.dir}" includes="${min.lab.name}"/>
+      <fileset dir="${tmp.dir}" includes="disco.loader-only.min.js"/>
+    </concat>
+    <!-- compile r1 -->
+    <jscomp compilationLevel="advanced" debug="false" output="${r1.dist.dir}/discoball.min.js">
+      <externs dir="${externs.src.dir}">
+        <file name="${r1}.js" />
+      </externs>
+      <externs dir="${r0.dist.dir}">
+        <file name="disco.min.js" />
+      </externs>
+      <sources dir="${r1.dist.dir}">
+        <file name="discoball.js" />
+      </sources>
+    </jscomp>
+    <!-- copy min/un-min r0 to root -->
+    <copy todir="${root.dist.dir}">
+      <fileset dir="${r0.dist.dir}" includes="*.js*"/>
+    </copy>
+    <!-- clean up temporary pre-files -->
+    <delete>
+      <fileset dir="${tmp.dir}" includes="*.js"/>
+    </delete>
+  </target>
+
+
+</project>
