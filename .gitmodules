@@ -7,3 +7,6 @@
 [submodule "build/closure-compiler"]
 	path = build/closure-compiler
 	url = git://github.com/goyote/google-closure-compiler.git
+[submodule "lib/r1-core"]
+	path = lib/r1-core
+	url = git://github.com/lightenna/js-libs.git
