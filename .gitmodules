@@ -4,3 +4,6 @@
 [submodule "lib/test/qunit"]
 	path = lib/test/qunit
 	url = git://github.com/jquery/qunit.git
+[submodule "build/closure-compiler"]
+	path = build/closure-compiler
+	url = git://github.com/goyote/google-closure-compiler.git
