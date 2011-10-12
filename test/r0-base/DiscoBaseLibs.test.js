@@ -58,7 +58,7 @@ if ( !QUnit.isLocal ) {
 				/**
 				 * Not sure about this test.  It leaves an item in the queue, waiting for
 				 * a library called 'no-such-previous' to be loaded.  We really should 
-				 * either test-and-fail (this case) or test-and-keep-trying
+				 * either test-and-fail (this case) or test-and-keep-trying (current behaviour)
 				 * @todo split test (current behaviour) and test-once (should be used for this)
 				 */
 				disco.q.push(["_load", {
