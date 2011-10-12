@@ -48,22 +48,22 @@
 
   <target name="concat">
     <!-- concat loader + r0 components to be minified later -->
-    <concat destfile="${tmp.dir}/disco.pre-min.js" force="no">
+    <concat destfile="${tmp.dir}/disco.pre-min.js">
       <fileset dir="${loader.src.dir}" includes="*.js*"/>
       <fileset dir="${r0.src.dir}" includes="*.js*"/>
     </concat>
     <!-- add un-minified LAB to produce un-min disco -->
-    <concat destfile="${r0.dist.dir}/disco.js" force="no">
+    <concat destfile="${r0.dist.dir}/disco.js">
       <fileset dir="${r0.lib.dir}" includes="${src.lab.name}"/>
       <fileset dir="${tmp.dir}" includes="disco.pre-min.js"/>
     </concat>
     <!-- concat un-min LAB with loader (not r0) to produce disco-loader -->
-    <concat destfile="${loader.dist.dir}/disco-loader.js" force="no">
+    <concat destfile="${loader.dist.dir}/disco-loader.js">
       <fileset dir="${r0.lib.dir}" includes="${src.lab.name}"/>
       <fileset dir="${loader.src.dir}" includes="*.js*"/>
     </concat>
     <!-- package up r1 components to discoball -->
-    <concat destfile="${r1.dist.dir}/discoball.js" force="no">
+    <concat destfile="${r1.dist.dir}/discoball.js">
       <fileset dir="${r1.src.dir}" includes="*.js*"/>
     </concat>
     <!-- copy un-min r0 to root -->
@@ -99,7 +99,7 @@
       </sources>
     </jscomp>
     <!-- concat min r0 + min lab = disco.min.js -->
-    <concat destfile="${r0.dist.dir}/disco.min.js" force="no">
+    <concat destfile="${r0.dist.dir}/disco.min.js">
       <fileset dir="${r0.lib.dir}" includes="${min.lab.name}"/>
       <fileset dir="${tmp.dir}" includes="disco.pre-lib.js"/>
     </concat>
@@ -116,7 +116,7 @@
       </sources>
     </jscomp>
     <!-- concat min loader + min lab = disco-loader.min.js -->
-    <concat destfile="${loader.dist.dir}/disco-loader.min.js" force="no">
+    <concat destfile="${loader.dist.dir}/disco-loader.min.js">
       <fileset dir="${r0.lib.dir}" includes="${min.lab.name}"/>
       <fileset dir="${tmp.dir}" includes="disco.loader-only.min.js"/>
     </concat>

@@ -6,7 +6,6 @@
 	disco.q.push(['_extendIf', {
 		
 		'core' : {
-			
 			// store a reference to our parents
 			disco : disco,
 			global : global,
