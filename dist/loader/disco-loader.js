@@ -815,9 +815,9 @@ var D15C0_m = (function(d, global, undefined) {
     }
     map = d['objMan']['map'];
     previous = d['objMan']['previous'];
-    // default to library
+    // default to previous, i.e. wait until we've loaded this name-version before
     if (!obj['type']) {
-      obj['type'] = 'library';
+      obj['type'] = 'previous';
     }
     // if name set, see if we've loaded before
     if (obj['name']) {
@@ -846,6 +846,8 @@ var D15C0_m = (function(d, global, undefined) {
       }
       // implicit else; store the load request object
       map[obj['hash']] = obj;
+      // archive it for future similar load requests (previous)
+      previous[obj['hash']] = obj;
     }
     // see if this object exists on the page already
     if (obj['test']) {
@@ -914,8 +916,7 @@ var D15C0_m = (function(d, global, undefined) {
     this.loader = this.loader.sandbox();
     // discard the current chain
     d['objMan'].clchain = this.loader;
-    // archive active objects as previously loaded objects
-    d['objMan']['previous'] = d['objMan']['map'];
+    // archive active objects not but previously loaded objects
     d['objMan']['map'] = {};
     // don't reset queue because it's not necessary
     var uncalled_resetQueue = function() {

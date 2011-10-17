@@ -2,154 +2,140 @@
  * DiSCO (c) 2011 Lightenna Ltd.
  */
 
-(function(disco, global) {
-	disco.q.push(['_extendIf', {
-		
-		'core' : {
-			// store a reference to our parents
-			disco : disco,
-			global : global,
+(function(d, global) {
+  d.q.push(['_load', {
+    'name' : 'disco.core',
+    'type' : 'inline',
+    'loaded' : function() {
+      d['_']['extend'](d, {
+        'core' : {
+          'init' : function() {
+            d['debug']('init called.');
+            // fire up object manager
+            d['objMan']['init']();
+            // fire up pane manager
+            d['paneMan']['init']();
+          }// ,
+        },
 
-			init : function() {
-				this.debug('init called.');
-				// fire up object manager
-				this.objectMan.init();
-				// fire up pane manager
-				this.paneMan.init();
-			},
-			
-			/**
-			 * Entry point following load
-			 */
-			'main' : function() {
-				return this.init();
-			}
+        /**
+         * Object manager constants
+         */
+        'constant' : {
+          'OBJMAN_TYPE_CLASS' : 0
+        },
 
-		},
-
-		'constant' : {
-			
-			/**
-			 * Object manager constants
-			 */
-			'OBJMAN_TYPE_CLASS' : 0
-		}
-		
-	}, true]);
+        // store a reference to our parents
+        disco : disco,
+        global : global
+      // ,
+      });
+      // initialise the core
+      d['core']['init']();
+    },
+    'require' : [{
+      'name' : 'baseLibs'
+    }, {
+      'name' : 'disco.object'
+    }, {
+      'name' : 'disco.objMan'
+    }, {
+      'name' : 'disco.paneMan'
+    }]
+  // ,
+  }]);
 }(D15C0_m, window));
+
 /**
  * DiSCO (c) 2011 Lightenna Ltd.
  */
 
-(function(disco, global) {
-	var obj = {
-		'objMan' : {
-			
-			// store a reference to our parents
-			disco : disco,
-			global : global,
+(function(d, global) {
+  d.q.push(['_load', {
+    'name' : 'disco.objMan',
+    'type' : 'inline',
+    'loaded' : function() {
+      d['_']['extend'](d, {
+        'objMan' : {
+          // already defined
+          // map : {},
+          // previous : {},
+          // clchain : function $LAB,
 
-			init : function() {
-			}
+          'init' : function() {
+            // initialise the object manager
+          }// ,
+        },
 
-		}
-	};
-	// push on to queue for processing
-	disco.q.push(['_extendIf', obj, true]);
+        // store a reference to our parents
+        disco : disco,
+        global : global
+      // ,
+      });
+    },
+    'require' : [{
+      'name' : 'baseLibs'
+    }]
+  // ,
+  }]);
 }(D15C0_m, window));
+
 /**
  * DiSCO (c) 2011 Lightenna Ltd.
  */
 
-(function(disco, global) {
-	// constructor
-	var object = function() {
-		// register instance with the object manager
-		disco.objMan.register(this);
-	};
-	_.extend(object.prototype, {
-		'name' : 'object',
-		'version' : '1.0.0',
-		'type' : 'class',
+(function(d, global) {
+  d.q.push(['_load', {
+    'name' : 'disco.object',
+    'type' : 'inline',
+    'loaded' : function() {
+      d['_']['extend'](d['objMan'], {
+        /**
+         * Setup default objMan class
+         */
+        'Object' : d['Backbone']['Model']['extend']({
+          'something' : function() {
+            // my specialised default Object, ready to communicate with server
+          }// ,
+        }),
 
-		// store a local reference to our parents
-		disco : disco,
-		global : global,
-
-		// store a reference to our constructor, in case overwritten by subtypes
-		constructor : object,
-		
-		init : function() {
-		},
-
-		// define class' non-core pre-requisites
-		'require' : [
-		    // these are redundant pre-reqs to illustrate how they work
-		    {
-			  	'name' : 'jQuery',
-			  	'version' : '1.6.1',
-			  	'test' : function(lib){
-			  	  // test for version ['version'] or later
-			  	  return(this.util.versionmux(lib.object.fn.jquery) > this.util.versionmux(lib.version));
-			  	},
-			  	'path' : ['//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js','/wito_rcv/js/min/r1/jquery-1.6.1.min.js'],
-			  	'loaded' : function(lib, global){
-			  	  // make sure we don't upset whatever was on the page before
-			  	  lib.object = lib.object.noConflict();
-			  	},
-			  	'type' : 'library'
-		    },
-		    {
-			  	'name' : 'Backbone',
-			  	'version' : '0.5.1',
-			  	'test' : function(lib){
-			  	  // test for version ['version'] or later
-			  	  return(this.util.versionmux(lib.object.VERSION) > this.util.versionmux(lib.version));
-			  	},
-			  	'path' : ['//cdnjs.cloudflare.com/ajax/libs/backbone.js/0.5.1/backbone-min.js','/wito_rcv/js/min/r2/backbone-0.5.1.min.js'],
-			  	'loaded' : function(lib, global){
-			  	  // make sure we don't upset whatever was on the page before
-			  	  lib.object = lib.object.noConflict();
-			  	},
-			  	'type' : 'library'
-		    },
-		    {
-		    	'type' : 'core'
-		    }
-		] //,
-
-	});
-	disco.q.push(['_load', object]);
+        // store a reference to our parents
+        disco : disco,
+        global : global// ,
+      });
+    },
+    'require' : [{
+      'name' : 'baseLibs'
+    }, {
+      'name' : 'disco.objMan'
+    }]
+  // ,
+  }]);
 }(D15C0_m, window));
+
 /**
  * DiSCO (c) 2011 Lightenna Ltd.
  */
 
-(function(disco, global) {
-	var obj = {
-		'pMan' : {
-			
-			// store a reference to our parents
-			disco : disco,
-			global : global,
+(function(d, global) {
+  d.q.push(['_load', {
+    'name' : 'disco.paneMan',
+    'type' : 'inline',
+    'loaded' : function() {
+      d['_']['extend'](d, {
+        'paneMan' : {
 
-			init : function() {
-			}
+        },
 
-		}
-	};
-	// push on to queue for processing
-	disco.q.push(['_extendIf', obj, true]);
-}(D15C0_m, window));
-/**
- * DiSCO (c) 2011 Lightenna Ltd.
- */
-
-(function(disco, global) {
-	// currently synchronous, discoball package must be run in order
-/*
-	disco.q.push(['_execute', 'core', function() {
-		return this.loadedLibs();
-	}]);
-*/
+        // store a reference to our parents
+        disco : disco,
+        global : global
+      // ,
+      });
+    },
+    'require' : [{
+      'name' : 'baseLibs'
+    }]
+  // ,
+  }]);
 }(D15C0_m, window));

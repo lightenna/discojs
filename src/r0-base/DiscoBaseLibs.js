@@ -6,9 +6,8 @@
 	disco.q.push(['_load', {
     'name' : 'discoball',
     // not using min version during debugging
-    //'path' : ['dist/r1-core/discoball.js'],
-    //'type' : 'library',
-    'type' : 'inline',
+    'path' : ['dist/r1-core/discoball.js'],
+    'type' : 'library',
     'loaded' : function(lib){
       // discoball loaded after all dependencies
     },

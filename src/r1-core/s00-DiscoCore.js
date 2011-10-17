@@ -2,38 +2,47 @@
  * DiSCO (c) 2011 Lightenna Ltd.
  */
 
-(function(disco, global) {
-	disco.q.push(['_extendIf', {
-		
-		'core' : {
-			// store a reference to our parents
-			disco : disco,
-			global : global,
+(function(d, global) {
+  d.q.push(['_load', {
+    'name' : 'disco.core',
+    'type' : 'inline',
+    'loaded' : function() {
+      d['_']['extend'](d, {
+        'core' : {
+          'init' : function() {
+            d['debug']('init called.');
+            // fire up object manager
+            d['objMan']['init']();
+            // fire up pane manager
+            d['paneMan']['init']();
+          }// ,
+        },
 
-			init : function() {
-				this.debug('init called.');
-				// fire up object manager
-				this.objectMan.init();
-				// fire up pane manager
-				this.paneMan.init();
-			},
-			
-			/**
-			 * Entry point following load
-			 */
-			'main' : function() {
-				return this.init();
-			}
+        /**
+         * Object manager constants
+         */
+        'constant' : {
+          'OBJMAN_TYPE_CLASS' : 0
+        },
 
-		},
-
-		'constant' : {
-			
-			/**
-			 * Object manager constants
-			 */
-			'OBJMAN_TYPE_CLASS' : 0
-		}
-		
-	}, true]);
+        // store a reference to our parents
+        disco : disco,
+        global : global
+      // ,
+      });
+      // initialise the core
+      d['core']['init']();
+    },
+    'require' : [{
+      'name' : 'baseLibs'
+    }, {
+      'name' : 'disco.object'
+    }, {
+      'name' : 'disco.objMan'
+    }, {
+      'name' : 'disco.paneMan'
+    }]
+  // ,
+  }]);
 }(D15C0_m, window));
+
