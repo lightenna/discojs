@@ -8,7 +8,7 @@ if ( !QUnit.isLocal ) {
 		var disco = window.D15C0_m;
 		disco.q.push(["_load", {
 			'type' : 'test',
-			'loaded' : function() {
+			'loaded' : function(lib, result) {
 				equal(typeof disco.process, 'function',
 						"Loader setup with augmented closure");
 				equal(typeof disco.q, 'object', "Loader queue setup");

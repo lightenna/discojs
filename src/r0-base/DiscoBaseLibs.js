@@ -8,8 +8,9 @@
     // not using min version during debugging
     'path' : ['dist/r1-core/discoball.js'],
     'type' : 'library',
-    'loaded' : function(lib){
+    'loaded' : function(lib, result){
       // discoball loaded after all dependencies
+      console.log('discoball callback '+result);
     },
 		'require' : [
       {
@@ -19,7 +20,7 @@
     			{
     				'name' : 'jQuery',
     				'version' : '1.6.1',
-    				'test' : function(lib){
+    				'test' : function(lib, result){
     					if (global['jQuery'] !== undefined) {
     						// test for version ['version'] or later
     						if (disco['util']['versionmux'](global['jQuery'].fn.jquery) > disco['util']['versionmux'](lib.version)) {
@@ -29,7 +30,7 @@
     					}
     				},
     				'path' : ['//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js', 'lib/r1-core/jquery/jquery.min.js'],
-    				'loaded' : function(lib){
+    				'loaded' : function(lib, result){
     					// make sure we don't upset whatever was on the page before
     					disco['$'] = global['jQuery'].noConflict();
     					return(disco['$']);
@@ -39,7 +40,7 @@
     			{
     				'name' : 'Backbone',
     				'version' : '0.5.1',
-    				'test' : function(lib){
+    				'test' : function(lib, result){
     					if (global['Backbone'] !== undefined) {
     						// test for version ['version'] or later
     						if (disco['util']['versionmux'](global['Backbone'].VERSION) > disco['util']['versionmux'](lib.version)) {
@@ -49,7 +50,7 @@
     					}
     				},
     				'path' : ['//cdnjs.cloudflare.com/ajax/libs/backbone.js/0.5.1/backbone-min.js', 'lib/r1-core/backbone/backbone.min.js'],
-    				'loaded' : function(lib){
+    				'loaded' : function(lib, result){
     					// make sure we don't upset whatever was on the page before
     					disco['Backbone'] = global['Backbone'].noConflict();
     					return(disco['Backbone']);
@@ -65,7 +66,7 @@
     					{
     						'name' : 'Underscore',
     						'version' : '1.1.6',
-    						'test' : function(lib){
+    						'test' : function(lib, result){
     							if (global['_'] !== undefined) {
     								// test for version ['version'] or later
     								if (disco['util']['versionmux'](global['_'].VERSION) > disco['util']['versionmux'](lib.version)) {
@@ -75,7 +76,7 @@
     							}
     						},
     						'path' : ['//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.1.6/underscore-min.js', 'lib/r1-core/underscore/underscore.min.js'],
-    						'loaded' : function(lib){
+    						'loaded' : function(lib, result){
     							// make sure we don't upset whatever was on the page before
     							disco['_'] = global['_'].noConflict();
     							return(disco['_']);

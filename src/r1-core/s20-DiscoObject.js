@@ -6,7 +6,7 @@
   d.q.push(['_load', {
     'name' : 'disco.object',
     'type' : 'inline',
-    'loaded' : function() {
+    'loaded' : function(lib, result) {
       d['_']['extend'](d['objMan'], {
         /**
          * Setup default objMan class

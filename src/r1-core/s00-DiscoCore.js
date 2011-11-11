@@ -6,7 +6,7 @@
   d.q.push(['_load', {
     'name' : 'disco.core',
     'type' : 'inline',
-    'loaded' : function() {
+    'loaded' : function(lib, result) {
       d['_']['extend'](d, {
         'core' : {
           'init' : function() {
@@ -18,18 +18,17 @@
           }// ,
         },
 
-        /**
-         * Object manager constants
-         */
-        'constant' : {
-          'OBJMAN_TYPE_CLASS' : 0
-        },
-
         // store a reference to our parents
         disco : disco,
         global : global
       // ,
       });
+      
+      // add constants
+      d['_']['extend'](d['constant'], {
+        'OBJMAN_TYPE_CLASS' : 0
+      });
+      
       // initialise the core
       d['core']['init']();
     },

@@ -8,7 +8,7 @@ if ( !QUnit.isLocal ) {
 		var disco = window.D15C0_m;
 		disco.q.push(["_load", {
 			'type' : 'test',
-			'loaded' : function() {
+			'loaded' : function(lib, result) {
 				// use jQuery to find added paragraph
 				var $ = disco['$'], t;
 				equal(typeof $, 'function', "Disco stored jQuery object");

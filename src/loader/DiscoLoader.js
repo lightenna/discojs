@@ -1,8 +1,7 @@
-
 // open with blank line
 /**
  * @license    DiSCO
- *     v0.1 (c) 2011 Lightenna Ltd
+ *     v0.2 (c) 2011 Lightenna Ltd
  *     MIT Licence
  */
 
@@ -27,7 +26,7 @@ var D15C0_m = (function(d, global, undefined) {
    * @param {int}
    * version DiSCO client version number
    */
-  d.VERSION = 0.1;
+  d.VERSION = 0.2;
 
   /**
    * @param {object} $
@@ -49,7 +48,8 @@ var D15C0_m = (function(d, global, undefined) {
     return ({
       'api' : d.VERSION,
       'debugMode' : false,
-      'basePath' : '/'
+      'scriptName' : 'disco.js',
+      'scriptPath' : false // flag to discover
     });
   };
 
@@ -58,6 +58,15 @@ var D15C0_m = (function(d, global, undefined) {
    * settings Empty settings, overwritten by process_ functions
    */
   d['settings'] = d.getDefaults();
+
+  /**
+   * @param {object}
+   * constant Loader constants, extended at compile-time but not overwritten at
+   * run-time
+   */
+  d['constant'] = {
+    'loaderTIMEOUT' : 2000
+  };
 
   /**
    * @param {array}
@@ -85,7 +94,7 @@ var D15C0_m = (function(d, global, undefined) {
    * 
    * item can a structured object with callback methods
    * 
-   * push({command:[_some, arg1, arg2], processed:function()}
+   * @deprecate push({command:[_some, arg1, arg2], processed:function()}
    * 
    * q is list of items
    * 
@@ -288,7 +297,7 @@ var D15C0_m = (function(d, global, undefined) {
    * Handle load request of library, code/test (inline), class
    */
   d['process_load'] = function(obj) {
-    var map, previous, reqlen, i, testlib, reqsmet, path;
+    var map, previous, i, testlib, reqlen, reqsmet, path;
     // initialise the object manager
     if (!d['objMan']) {
       d['objMan'] = {
@@ -296,13 +305,16 @@ var D15C0_m = (function(d, global, undefined) {
         'map' : {},
         // hash map of previously loaded objects
         'previous' : {},
+        // current loader queue
+        clqueue : {},
         // current loader chain
         clchain : this.loader
       };
     }
     map = d['objMan']['map'];
     previous = d['objMan']['previous'];
-    // default to previous, i.e. wait until we've loaded this name-version before
+    // default to previous, i.e. wait until we've loaded this name-version
+    // before
     if (!obj['type']) {
       obj['type'] = 'previous';
     }
@@ -347,16 +359,26 @@ var D15C0_m = (function(d, global, undefined) {
       }
     }
     // see if it has pre-requisites
+    reqlen = 0;
     reqsmet = true;
     if (obj['require']) {
       if (obj['require'] instanceof Array) {
         reqlen = obj['require'].length;
+        // count the number of requisites as they're parented
+        obj['timeout-pending'] = 0;
         // process the requisites, until one fails
         for (i = 0; (i < reqlen) && (reqsmet); i++) {
           reqsmet &= this['process_load'](obj['require'][i]);
+          // parent each requisite for cascading timeouts
+          obj['require'][i]['timeout-parent'] = obj;
+          obj['timeout-pending']++;
         }
-        // tell the loader to wait for our pre-requisites (in case)
-        d['objMan'].clchain = d['objMan'].clchain.wait();
+        // tell the loader to wait for our pre-requisites if more than 1
+        if (reqlen >= 2) {
+          // not sure about the role of this
+          // the idea is to capture multiple loads in one go
+          // d['objMan'].clchain = d['objMan'].clchain.wait(d.loadSucceeded(obj));
+        }
       } else {
         d.error("'require' specified but not of type Array");
       }
@@ -367,29 +389,151 @@ var D15C0_m = (function(d, global, undefined) {
     // process this object depending on its type
     switch (obj['type']) {
       case 'library' :
-        // load this object
-        path = obj['path'][0];
-        // test for local URLs
-        if (path[0] != '/') {
-          if (path.substring(0, 4) != 'http' ) {
-            // prepend local basePath to path 
-            path = this['settings']['basePath'] + path;
-          }
+        // set loaded-index if not set
+        if (!obj['loaded-index']) {
+          // store reference to last load attempt (which failed)
+          obj['loaded-index'] = 0;
         }
-        // @todo insert load next if first fails  
+        // set status
+        obj['loaded-status'] = 'loading';
+        // load this object
+        path = d.getPath(obj['path'], obj['loaded-index']);
+        // add to loader chain
         d['objMan'].clchain = d['objMan'].clchain.script(path);
+        // store in loading queue
+        d['objMan'].clqueue[obj['hash']] = obj;
         // note no break
       case 'inline' :
       case 'test' :
-        // if this function has a 'loaded' callback, call it
-        if (obj['loaded']) {
-          d['objMan'].clchain = d['objMan'].clchain.wait(function() {
-            obj['object'] = obj['loaded'].call(obj, obj);
-          });
+        // setup a function for when we start the load timeout, if we need it
+        obj['loaded-timeout'] = d.loadTimedOut(obj);
+        // if this is a terminal node
+        if (reqlen == 0) {
+          // setup a timeout to catch a failed load/not found event
+          setTimeout(obj['loaded-timeout'], d['constant']['loaderTIMEOUT']);
         }
+        // add wait after every script in chain
+        d['objMan'].clchain = d['objMan'].clchain.wait(d.loadSucceeded(obj));
     }
     return true;
   };
+
+  /**
+   * Pull or amend a relative path
+   * 
+   * @param {array}
+   * patharr Array of paths for this script
+   * @param {int}
+   * index Index to pull from array (zero-based)
+   * @return {string} referenced script path
+   */
+  d.getPath = function(patharr, index) {
+    var path;
+    if (patharr instanceof Array) {
+      if (index < patharr.length) {
+        path = patharr[index];
+      } else {
+        // error: index > length of array
+        return null;
+      }
+    } else {
+      if (index == 0) {
+        path = patharr;
+      } else {
+        // error: index non-zero and path is singleton
+        return null;
+      }
+    }
+    // test for local URLs or protocol relative URLs
+    if (path[0] != '/') {
+      // test for non-local URLs without http
+      if (path.substring(0, 4) != 'http') {
+        // get base path/calculate local path to discojs install
+        path = d['util']['getScriptPath']() + path;
+      }
+    }
+    return path;
+  }
+
+  /**
+   * Callback function for load failed (timeout)
+   * 
+   * @param {object}
+   * Object being loaded
+   * @param {function}
+   * Timeout handler for this object
+   */
+  d.loadTimedOut = function(obj) {
+    return (function() {
+      var fail = false;
+      // cancel timeout (though it was called)
+      delete obj['loaded-timeout'];
+      // check obj passed
+      if ((obj['path'] === undefined) || !(obj['path'] instanceof Array)) {
+        // console.log(d['util']['toString'](obj));
+        fail = true;
+      }
+      // load failed; if there are more alternatives, load them
+      else if (obj['path'].length > (obj['loaded-index'] + 1)) {
+        // scrub the map and previous references, because we haven't loaded it
+        delete d['objMan']['map'][obj['hash']];
+        delete d['objMan']['previous'][obj['hash']];
+        // load next path in the sequence
+        obj['loaded-index']++;
+        d.process_load(obj);
+        fail = false;
+      }
+      if (fail) {
+        // otherwise flag library failed
+        obj['loaded-status'] = 'failed';
+        // tell timeout-parent to start timing out
+        if (obj['timeout-parent']) {
+          // if parent hasn't loaded or timed out yet
+          if (obj['timeout-parent']['loaded-timeout']) {
+            setTimeout(obj['timeout-parent']['loaded-timeout'], d['constant']['loaderTIMEOUT']);
+          }
+        }
+        if (obj['hash']) {
+          // pop object off queue
+          delete d['objMan'].clqueue[obj['hash']];
+        }
+        if (obj['loaded']) {
+          // tell the object we failed to load
+          obj['object'] = obj['loaded'].call(obj, obj, false);
+        }
+      }
+    });
+  }
+
+  /**
+   * Callback function for load success (loaded)
+   * 
+   * @param {object}
+   * Object being loaded
+   * @param {function}
+   * Handler for this object
+   */
+  d.loadSucceeded = function(obj) {
+    return (function() {
+      // cancel timeout
+      clearTimeout(obj['loaded-timeout']);
+      delete obj['loaded-timeout'];
+      // tell timeout-parent to start timing out
+      if (obj['timeout-parent']) {
+        setTimeout(obj['timeout-parent']['loaded-timeout'], d['constant']['loaderTIMEOUT']);
+      }
+      // clean up object
+      delete obj['loaded-index'];
+      // set status
+      obj['loaded-status'] = 'loaded';
+      // pop object off queue
+      delete d['objMan'].clqueue[obj['hash']];
+      if (obj['loaded']) {
+        // call loaded function with success result (true)
+        obj['object'] = obj['loaded'].call(obj, obj, true);
+      }
+    });
+  }
 
   /**
    * Resets internal state to pre-init; used in settings-order tests
@@ -443,7 +587,52 @@ var D15C0_m = (function(d, global, undefined) {
         n += parseInt(varr[i]) * Math.pow(100, i);
       }
       return n;
-    }
+    },
+
+    /**
+     * Find ourselves in the script array and return leaf
+     * 
+     * @return string Path to this script
+     */
+    'getScriptPath' : function() {
+      var i, scripts, path, leafcomp, comp, complen;
+      // if scriptPath set, use that
+      if (d['settings']['scriptPath']) {
+        return d['settings']['scriptPath'];
+      }
+      scripts = global['document'].getElementsByTagName('script');
+      comp = d['settings']['scriptName'];
+      complen = comp.length;
+      for (i = 0; i < scripts.length; ++i) {
+        leafcomp = scripts[i].src.substring(scripts[i].src.length - complen);
+        if (leafcomp == d['settings']['scriptName']) {
+          // script found, return path
+          path = scripts[i].src.split('/').slice(0, -1).join('/') + '/';
+          return path;
+        }
+      }
+      // script not found, return /
+      return '/';
+    },
+
+    /**
+     * Convert an object to a string representation
+     * 
+     * @param object
+     * obj Object input
+     * @return string String representation
+     */
+    'toString' : function(obj) {
+      var str = '', showFunc = false || arguments[1];
+      for ( var prop in obj) {
+        if (obj[prop] && !showFunc) {
+          if (obj[prop].toString().indexOf('{') != -1)
+            continue;
+        }
+        str += prop + " value :" + (obj[prop] ? obj[prop] : '0') + "\n";
+      }
+      return str;
+    }// ,
   };
 
   // return augmented module

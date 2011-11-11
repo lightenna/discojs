@@ -6,7 +6,7 @@
   d.q.push(['_load', {
     'name' : 'disco.objMan',
     'type' : 'inline',
-    'loaded' : function() {
+    'loaded' : function(lib, result) {
       d['_']['extend'](d, {
         'objMan' : {
           // already defined

@@ -2,18 +2,72 @@
 
 module("Module r0-base: DiscoBaseLibs.js");
 
-// tests don't have to run in order, but first test has to run first!
+// tests have to run in order
 QUnit.config.reorder = false;
 
 if ( !QUnit.isLocal ) {
-	test("_load, require[baseLibs]", 1, function() {
+  
+  /**
+   * Load object after falling back to find requirement
+   */
+  test("_load, require local fallback", 2, function() {
+    stop();
+    var disco = window.D15C0_m;
+    disco.q.push(["_load", {
+      'type' : 'test',
+      'loaded' : function(lib, result) {
+        equal(result, true,
+            "Loaded fallback library successfully");
+        equal(window['fallback'], 101,
+            "Loaded correct version of fallback");
+        start();
+      },
+      'require' : [
+        {
+          'name' : 'fallback',
+          'path' : ['http://no-such.dom/no-such.file', 'test/r0-base/fallback.js'],
+          'type' : 'library'//,
+        }//,
+      ]//,
+    }]);
+  });
+  
+  /**
+   * Load object after failing to find requirement
+   */
+  test("_load, require no-such-file or no-such-fallback", 1, function() {
+    stop();
+    var disco = window.D15C0_m;
+    disco.q.push(["_load", {
+      'type' : 'test',
+      'loaded' : function(lib, result) {
+        equal(result, false,
+            "Called loaded after timeout to report fail");
+        start();
+      },
+      'require' : [
+        {
+          'name' : 'no-such-file',
+          'path' : ['http://no-such.domain/no-such.file', 'http://no-such.fallback-domain/no-such.file'],
+          'type' : 'library'//,
+        }//,
+      ]//,
+    }]);
+  });
+  
+  /**
+   * Load object requiring baseLibs
+   */
+	test("_load, require[baseLibs]", 2, function() {
 		stop();
 		var disco = window.D15C0_m;
 		disco.q.push(["_load", {
 			'type' : 'test',
-			'loaded' : function() {
-				equal(disco.$.fn.jquery, '1.6.1',
-						"Loaded correct version of jQuery");
+			'loaded' : function(lib, result) {
+        equal(result, true,
+            "Loaded library successfully");
+        equal(disco.$.fn.jquery, '1.6.1',
+            "Loaded correct version of jQuery");
 				start();
 			},
 			'require' : [
@@ -38,7 +92,7 @@ if ( !QUnit.isLocal ) {
 		// wait for initial base load
 		disco.q.push(["_load", {
 			'type' : 'test',
-			'loaded' : function() {
+			'loaded' : function(lib, result) {
 				equal(typeof disco.objMan.map, 'object',
 						"Loader setup objectManager");
 				start();
@@ -55,23 +109,19 @@ if ( !QUnit.isLocal ) {
 					equal(disco.settings.debugMode, true, "Debug on");
 					start();
 				}});
-				/**
-				 * Not sure about this test.  It leaves an item in the queue, waiting for
-				 * a library called 'no-such-previous' to be loaded.  We really should 
-				 * either test-and-fail (this case) or test-and-keep-trying (current behaviour)
-				 * @todo split test (current behaviour) and test-once (should be used for this)
-				 */
+				// try and load an unseen previous
 				disco.q.push(["_load", {
 					'type' : 'test',
-					'loaded' : function() {
-						ok(false, "[error] loaded() function based on unseen previous");
+					'loaded' : function(lib, result) {
+						ok(false, "[error] called loaded() function based on unseen previous");
 					},
 					'require' : [{ 'name' : 'no-such-previous', 'type' : 'previous' }]//,
 				}]);
 				stop();
+				// load a seen previous (jQuery)
 				disco.q.push(["_load", {
 					'type' : 'test',
-					'loaded' : function() {
+					'loaded' : function(lib, result) {
 						ok(true, "loaded() function based on familiar previous");
 						equal(disco.$.fn.jquery, '1.6.1',
 								"Loaded correct version of jQuery");

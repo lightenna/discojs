@@ -6,7 +6,7 @@
   d.q.push(['_load', {
     'name' : 'disco.paneMan',
     'type' : 'inline',
-    'loaded' : function() {
+    'loaded' : function(lib, result) {
       d['_']['extend'](d, {
         'paneMan' : {
 
