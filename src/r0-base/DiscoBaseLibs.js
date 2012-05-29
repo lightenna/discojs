@@ -53,6 +53,8 @@
     				'loaded' : function(lib, result){
     					// make sure we don't upset whatever was on the page before
     					disco['Backbone'] = global['Backbone'].noConflict();
+    					// after Backbone is loaded, tell underscore to hide itself
+              global['_'].noConflict();
     					return(disco['Backbone']);
     				},
     				'type' : 'library',
@@ -70,6 +72,7 @@
     							if (global['_'] !== undefined) {
     								// test for version ['version'] or later
     								if (disco['util']['versionmux'](global['_'].VERSION) > disco['util']['versionmux'](lib.version)) {
+    								  // copy library into disco, but delay clean up until dependencies loaded
     									disco['_'] = global['_'];
     									return(disco['_']);
     								}
@@ -78,7 +81,7 @@
     						'path' : ['//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.1.6/underscore-min.js', 'lib/r1-core/underscore/underscore.min.js'],
     						'loaded' : function(lib, result){
     							// make sure we don't upset whatever was on the page before
-    							disco['_'] = global['_'].noConflict();
+                  disco['_'] = global['_'];
     							return(disco['_']);
     						},
     						'type' : 'library'// ,

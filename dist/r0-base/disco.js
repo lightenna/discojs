@@ -562,7 +562,9 @@ var D15C0_m = (function(d, global, undefined) {
       'api' : d.VERSION,
       'debugMode' : false,
       'scriptName' : 'disco.js',
-      'scriptPath' : false // flag to discover
+      'scriptPath' : false, // false = 'to discover'
+      'loaderTimeout' : 2000, // 0 = 'unlimited'
+      'lastSettingNoComma' : 0
     });
   };
 
@@ -577,9 +579,7 @@ var D15C0_m = (function(d, global, undefined) {
    * constant Loader constants, extended at compile-time but not overwritten at
    * run-time
    */
-  d['constant'] = {
-    'loaderTIMEOUT' : 2000
-  };
+  d['constant'] = {};
 
   /**
    * @param {array}
@@ -607,8 +607,6 @@ var D15C0_m = (function(d, global, undefined) {
    * 
    * item can a structured object with callback methods
    * 
-   * @deprecate push({command:[_some, arg1, arg2], processed:function()}
-   * 
    * q is list of items
    * 
    */
@@ -628,11 +626,14 @@ var D15C0_m = (function(d, global, undefined) {
   /**
    * Show a debugging message if we're debugging
    * 
-   * @param string
+   * @param {string}
    * mess Debugging message for console
+   * 
+   * @param {boolean}
+   * force Force display, even if debugMode set to false
    */
   d.debug = function(mess) {
-    if (this['settings'].debugMode) {
+    if (this['settings'].debugMode || arguments[1]) {
       if (global.console != undefined) {
         global.console.log(mess);
       }
@@ -700,22 +701,6 @@ var D15C0_m = (function(d, global, undefined) {
         } else {
           if (queueItem instanceof Array) {
             result = d.processArrayItem(queueItem);
-          } else {
-            // process structured object
-            if (queueItem['command'] != undefined) {
-              result = d.processArrayItem(queueItem['command']);
-              // if we successfully executed the command
-              if (result) {
-                if (queueItem['processed'] != undefined) {
-                  // invent context if not set
-                  if (queueItem['context'] == undefined) {
-                    queueItem['context'] = global;
-                  }
-                  // call 'processed' function in that context
-                  queueItem['processed'].apply(queueItem['context']);
-                }
-              }
-            }
           }
         }
         // if we couldn't process this item, flag it
@@ -763,22 +748,37 @@ var D15C0_m = (function(d, global, undefined) {
    * Helper function for process()
    * 
    * @param array|string
-   * queueItem Function for calling
+   * queueItem Function name for calling or queueItem array of the form
+   * ['_functionName', {args}]
    */
   d.processArrayItem = function(queueItem) {
-    var callName, result = true;
+    var callName, result = true, obj;
     // process array (function name, args...)
     if (queueItem.length >= 1) {
       // item is a subarray containing a process_ function
-      // reference; if it's not an array, wrap
+      // if it's not an array, wrap
       if (typeof queueItem !== 'object') {
         queueItem = [queueItem];
+      }
+      // if there's no first argument, pass an empty object
+      if (typeof queueItem[1] === undefined) {
+        queueItem[1] = {};
       }
       callName = 'process' + queueItem[0];
       if (typeof this[callName] === 'function') {
         // global.console.log('calling '+callName+',
         // '+queueItem[1]);
         result = this[callName].apply(d, queueItem.slice(1));
+        // if called successfully, run 'processed' function
+        if (result) {
+          obj = queueItem[1];
+          if (typeof obj === 'object') {
+            if (typeof obj['processed'] === 'function') {
+              // tell the object we successfully processed it
+              obj['processed'].call(obj, obj, true);
+            }
+          }
+        }
       }
     }
     return result;
@@ -790,16 +790,16 @@ var D15C0_m = (function(d, global, undefined) {
    * analytics javascript urchin.
    * 
    * @param {object}
-   * sets Settings object to apply
+   * obj Settings object to apply
    * @return {boolean} true if the data was processed and should be removed from
    * the queue
    */
-  d['process_settings'] = function(sets) {
+  d['process_settings'] = function(obj) {
     // enumerate sets object
-    for ( var attrname in sets) {
+    for ( var attrname in obj) {
       // wrap in if statement to protect against prototype changes
-      if (sets.hasOwnProperty(attrname)) {
-        this['settings'][attrname] = sets[attrname];
+      if (obj.hasOwnProperty(attrname)) {
+        this['settings'][attrname] = obj[attrname];
       }
     }
     return true;
@@ -810,7 +810,7 @@ var D15C0_m = (function(d, global, undefined) {
    * Handle load request of library, code/test (inline), class
    */
   d['process_load'] = function(obj) {
-    var map, previous, reqlen, i, testlib, reqsmet, path;
+    var map, previous, i, testlib, req, reqlen, reqsmet, path;
     // initialise the object manager
     if (!d['objMan']) {
       d['objMan'] = {
@@ -819,7 +819,7 @@ var D15C0_m = (function(d, global, undefined) {
         // hash map of previously loaded objects
         'previous' : {},
         // current loader queue
-        clqueue : {},
+        clhashtree : {},
         // current loader chain
         clchain : this.loader
       };
@@ -872,16 +872,25 @@ var D15C0_m = (function(d, global, undefined) {
       }
     }
     // see if it has pre-requisites
+    reqlen = 0;
     reqsmet = true;
     if (obj['require']) {
       if (obj['require'] instanceof Array) {
         reqlen = obj['require'].length;
         // process the requisites, until one fails
         for (i = 0; (i < reqlen) && (reqsmet); i++) {
-          reqsmet &= this['process_load'](obj['require'][i]);
+          req = obj['require'][i];
+          // parent the requisite to cascade delayed failures
+          req['require-parent'] = obj;
+          // flag that we have unmet requisites
+          if (obj['require-childrenUnmet']) {
+            obj['require-childrenUnmet']++;
+          } else {
+            obj['require-childrenUnmet'] = 1;
+          }
+          // logic AND the instant results; all requisites are required
+          reqsmet &= this['process_load'](req);
         }
-        // tell the loader to wait for our pre-requisites (in case)
-        // d['objMan'].clchain = d['objMan'].clchain.wait();
       } else {
         d.error("'require' specified but not of type Array");
       }
@@ -889,6 +898,15 @@ var D15C0_m = (function(d, global, undefined) {
     if (!reqsmet) {
       return false;
     }
+    // actually load the object
+    return this.process_loadDirect(obj);
+  };
+
+  /**
+   * After the various tests, load this object
+   */
+  d.process_loadDirect = function(obj) {
+    var path;
     // process this object depending on its type
     switch (obj['type']) {
       case 'library' :
@@ -897,25 +915,32 @@ var D15C0_m = (function(d, global, undefined) {
           // store reference to last load attempt (which failed)
           obj['loaded-index'] = 0;
         }
-        // set status
-        obj['loaded-status'] = 'loading';
         // load this object
         path = d.getPath(obj['path'], obj['loaded-index']);
         // add to loader chain
         d['objMan'].clchain = d['objMan'].clchain.script(path);
         // store in loading queue
-        d['objMan'].clqueue[obj['hash']] = obj;
-        // note no break
+        d['objMan'].clhashtree[obj['hash']] = obj;
+        // note: NO break
       case 'inline' :
       case 'test' :
-        // always setup a timeout to catch a failed load/not found event
-        obj['loaded-timeout'] = setTimeout(d.loadTimedOut(obj),
-            d['constant']['loaderTIMEOUT']);
+        // set status
+        obj['loaded-status'] = 'loading';
+        if (d['settings']['loaderTimeout'] > 0) {
+          // setup a function for when we start the load timeout, if we need it
+          obj['loaded-timeout'] = d.loadTimedOut(obj);
+          // if this is a terminal node
+          if ((obj['require'] === undefined) || (obj['require'].length == 0)) {
+            // setup a timeout to catch a failed load/not found event
+            obj['loaded-timeoutID'] = setTimeout(obj['loaded-timeout'],
+                d['settings']['loaderTimeout']);
+          }
+        }
         // add wait after every script in chain
-        d['objMan'].clchain = d['objMan'].clchain.wait(d.loadSucceed(obj));
+        d['objMan'].clchain = d['objMan'].clchain.wait(d.loadSucceeded(obj));
     }
     return true;
-  };
+  }
 
   /**
    * Pull or amend a relative path
@@ -965,34 +990,83 @@ var D15C0_m = (function(d, global, undefined) {
   d.loadTimedOut = function(obj) {
     return (function() {
       var fail = false;
-      // check obj passed
-      if ((obj['path'] === undefined) || !(obj['path'] instanceof Array)) {
-        // console.log(d['util']['toString'](obj));
-        fail = true;
-      }
-      // load failed; if there are more alternatives, load them
-      else if (obj['path'].length > (obj['loaded-index'] + 1)) {
-        // scrub the map and previous references, because we haven't loaded it
-        delete d['objMan']['map'][obj['hash']];
-        delete d['objMan']['previous'][obj['hash']];
-        // load next path in the sequence
-        obj['loaded-index']++;
-        d.process_load(obj);
-        fail = false;
-      }
-      if (fail) {
-        // otherwise flag library failed
-        obj['loaded-status'] = 'failed';
-        if (obj['hash']) {
-          // pop object off queue
-          delete d['objMan'].clqueue[obj['hash']];
+      // check that the load hasn't finished already
+      if (obj['loaded-status'] == 'loading') {
+        // debug message
+        d.debug('load timed out for '
+            + (obj['name'] === undefined ? '{' + obj['type'] + '}' : '\''
+                + obj['name'] + '\'') + ' object');
+        // cancel timeout (even though it was called)
+        delete obj['loaded-timeout'];
+        // reset the loader
+        d.loader = d.loader.sandbox();
+        d['objMan'].clchain = d.loader;
+        // check path array setup
+        if ((obj['path'] === undefined) || !(obj['path'] instanceof Array)) {
+          // console.log(d['util']['toString'](obj));
+          fail = true;
         }
-        if (obj['loaded']) {
-          // tell the object we failed to load
-          obj['object'] = obj['loaded'].call(obj, obj, false);
+        // load failed; if there are more alternatives, load them
+        else if (obj['path'].length > (obj['loaded-index'] + 1)) {
+          fail = false;
+          // scrub the map and previous references, because we haven't loaded it
+          delete d['objMan']['map'][obj['hash']];
+          delete d['objMan']['previous'][obj['hash']];
+          // load next path in the sequence
+          obj['loaded-index']++;
+          // debug message
+          d.debug('trying again for \'' + obj['name']
+              + '\' object, loaded-index[' + obj['loaded-index'] + ']');
+          d.process_load(obj);
         }
+        // load timed out and no alternatives available
+        else {
+          fail = true;
+        }
+        // if we failed to load all alternatives
+        if (fail == true) {
+          d.loadFailed(obj, 'failed');
+        }
+      } else {
+        // protect the critical section
+        d['error']('Load timed out on object not flagged for loading '
+            + d['toString'](obj));
       }
     });
+  }
+
+  /**
+   * Load failed
+   * 
+   * Tell an object it has failed to load. Even if the file loaded, we may still
+   * have to mark it as failed if one of its requisites failed.
+   * 
+   * @param {object}
+   * obj which failed
+   * @param {string}
+   * Reason for failure
+   */
+  d.loadFailed = function(obj, status) {
+    var i;
+    // flag loading failed/require-failed
+    obj['loaded-status'] = status;
+    // log message
+    d.debug('failed to load '
+        + (obj['name'] === undefined ? '{' + obj['type'] + '}' : '\''
+            + obj['name'] + '\'') + ' object');
+    // tell parent to fail
+    if (obj['require-parent']) {
+      d.loadFailed(obj['require-parent'], 'require-failed');
+    }
+    if (obj['hash']) {
+      // pop object off queue
+      delete d['objMan'].clhashtree[obj['hash']];
+    }
+    // trigger listeners
+    if (obj['loaded']) {
+      // tell the object we failed to load
+      obj['object'] = obj['loaded'].call(obj, obj, false);
+    }
   }
 
   /**
@@ -1003,20 +1077,66 @@ var D15C0_m = (function(d, global, undefined) {
    * @param {function}
    * Handler for this object
    */
-  d.loadSucceed = function(obj) {
+  d.loadSucceeded = function(obj) {
     return (function() {
-      // cancel timeout
-      clearTimeout(obj['loaded-timeout']);
-      // clean up object
-      delete obj['loaded-timeout'];
-      delete obj['loaded-index'];
-      // set status
-      obj['loaded-status'] = 'loaded';
-      // pop object off queue
-      delete d['objMan'].clqueue[obj['hash']];
-      if (obj['loaded']) {
-        // call loaded function
-        obj['object'] = obj['loaded'].call(obj, obj, true);
+      var parent;
+      // check that the load hasn't finished already
+      if (obj['loaded-status'] == 'loading') {
+        // write to log
+        d.debug('loaded '
+            + (obj['name'] === undefined ? '{' + obj['type'] + '}' : '\''
+                + obj['name'] + '\'') + ' object');
+        // cancel timeout
+        if (obj['loaded-timeout']) {
+          clearTimeout(obj['loaded-timeoutID']);
+          delete obj['loaded-timeout'];
+          delete obj['loaded-timeoutID'];
+        }
+        // tell parent to decrement counter
+        if (obj['require-parent']) {
+          parent = obj['require-parent'];
+          if (parent['require-childrenUnmet']) {
+            // decrement parent counter
+            parent['require-childrenUnmet']--;
+            if (parent['require-childrenUnmet'] > 0) {
+              // do nothing, wait for other children to succeed/timeout
+            } else {
+              // so long as the parent is still loading
+              if (parent['loaded-status'] == 'loading') {
+                // set timeout going on parent
+                delete parent['require-childrenUnmet'];
+                // debug message
+                d.debug('waiting on parent '
+                    + (parent['name'] === undefined ? '{' + parent['type']
+                        + '}' : '\'' + parent['name'] + '\'') + ' object');
+                // tell the parent object to timeout, but then to reschedule load
+                parent['loaded-timeout'] = function() {
+                  return d.process_loadDirect(parent);
+                }
+                parent['loaded-timeoutID'] = setTimeout(
+                    parent['loaded-timeout'], d['settings']['loaderTimeout']);
+              }
+            }
+          }
+        }
+        // clean up object
+        delete obj['loaded-index'];
+        // set status
+        obj['loaded-status'] = 'loaded';
+        // pop object off queue
+        delete d['objMan'].clhashtree[obj['hash']];
+        if (obj['loaded']) {
+          // call loaded function with success result (true)
+          obj['object'] = obj['loaded'].call(obj, obj, true);
+        }
+        // tell parent to succeed
+        if (obj['require-parent']) {
+          d.loadSucceeded(obj['require-parent'], 'require-failed');
+        }
+      } else {
+        // protect the critical section
+        d['error']('Load succeeded on object not flagged for loading '
+            + d['toString'](obj));
       }
     });
   }
@@ -1024,10 +1144,15 @@ var D15C0_m = (function(d, global, undefined) {
   /**
    * Resets internal state to pre-init; used in settings-order tests
    * 
+   * @param {object}
+   * obj for passing additional arguments
    * @return {boolean} true if the data was processed and should be removed from
    * the queue
    */
-  d['process_reset'] = function() {
+  d['process_reset'] = function(obj) {
+    var uncalled_resetQueue, initLibArray;
+    // protect against obj being unset
+    obj = obj || {};
     this.$ = null;
     // clear loader state, to re-trigger loaded event
     this.loader = this.loader.sandbox();
@@ -1036,7 +1161,7 @@ var D15C0_m = (function(d, global, undefined) {
     // archive active objects not but previously loaded objects
     d['objMan']['map'] = {};
     // don't reset queue because it's not necessary
-    var uncalled_resetQueue = function() {
+    uncalled_resetQueue = function() {
       // record push function pointer
       var pushStack = this.q.push;
       // setup empty q (mid-reset) with .push() wrapper
@@ -1048,15 +1173,39 @@ var D15C0_m = (function(d, global, undefined) {
     // reset settings back to defaults
     this['settings'] = this.getDefaults();
     // push onto queue an _initLib request, processed *next* push
+    initLibArray = ['_load', {
+      'name' : 'baseLibs',
+      'type' : 'previous'// ,
+    }];
+    // if reset has a callback function, attach to baseLib load
+    if (obj['loaded'] !== undefined) {
+      initLibArray[1]['loaded'] = obj['loaded'];
+    }
     this.q.push_super(['_load', {
       'name' : 'baseLibs',
-      'type' : 'previous'
+      'type' : 'previous'// ,
     }]);
     // call process() to ensure it clears this at some point
     d.process();
-    return (true);
+    return true;
   };
 
+  /**
+   * Resets internal state to pre-init; used in settings-order tests
+   * 
+   * @param {object}
+   * obj for passing additional arguments
+   * @return {boolean} true if the data was processed and should be removed from
+   * the queue
+   */
+  d['process_debug'] = function(obj) {
+    if (typeof obj['msg'] !== undefined) {
+      d.debug(obj['msg'], obj['force']);
+    }
+    return true;
+  }
+
+  
   // start building up util lib
   d['util'] = {
     /**
@@ -1179,6 +1328,8 @@ var D15C0_m = (function(d, global, undefined) {
     				'loaded' : function(lib, result){
     					// make sure we don't upset whatever was on the page before
     					disco['Backbone'] = global['Backbone'].noConflict();
+    					// after Backbone is loaded, tell underscore to hide itself
+              global['_'].noConflict();
     					return(disco['Backbone']);
     				},
     				'type' : 'library',
@@ -1196,6 +1347,7 @@ var D15C0_m = (function(d, global, undefined) {
     							if (global['_'] !== undefined) {
     								// test for version ['version'] or later
     								if (disco['util']['versionmux'](global['_'].VERSION) > disco['util']['versionmux'](lib.version)) {
+    								  // copy library into disco, but delay clean up until dependencies loaded
     									disco['_'] = global['_'];
     									return(disco['_']);
     								}
@@ -1204,7 +1356,7 @@ var D15C0_m = (function(d, global, undefined) {
     						'path' : ['//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.1.6/underscore-min.js', 'lib/r1-core/underscore/underscore.min.js'],
     						'loaded' : function(lib, result){
     							// make sure we don't upset whatever was on the page before
-    							disco['_'] = global['_'].noConflict();
+                  disco['_'] = global['_'];
     							return(disco['_']);
     						},
     						'type' : 'library'// ,
